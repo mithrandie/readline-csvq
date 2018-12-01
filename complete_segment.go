@@ -43,7 +43,7 @@ func RetSegment(segments [][]rune, cands [][]rune, idx int) ([][]rune, int) {
 	ret := make([][]rune, 0, len(cands))
 	lastSegment := segments[len(segments)-1]
 	for _, cand := range cands {
-		if !runes.HasPrefix(cand, lastSegment) {
+		if !runes.HasPrefixFold(cand, lastSegment) {
 			continue
 		}
 		ret = append(ret, cand[len(lastSegment):])
@@ -69,7 +69,7 @@ func SplitSegment(line []rune, pos int) ([][]rune, int) {
 	return segs, pos
 }
 
-func (c *SegmentComplete) Do(line []rune, pos int) (newLine [][]rune, offset int) {
+func (c *SegmentComplete) Do(line []rune, pos int) (newLine [][]rune, offset int, formatAsIdentifier bool) {
 
 	segment, idx := SplitSegment(line, pos)
 
@@ -78,5 +78,5 @@ func (c *SegmentComplete) Do(line []rune, pos int) (newLine [][]rune, offset int
 	for idx := range newLine {
 		newLine[idx] = append(newLine[idx], ' ')
 	}
-	return newLine, offset
+	return newLine, offset, false
 }

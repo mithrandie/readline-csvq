@@ -10,8 +10,8 @@ type DynamicCompleteFunc func(string) []string
 
 type PrefixCompleterInterface interface {
 	Print(prefix string, level int, buf *bytes.Buffer)
-	Do(line []rune, pos int) (newLine [][]rune, length int)
-	GetName() []rune
+	Do(line []rune, pos int) (newLine [][]rune, length int, formatAsIdentifier bool)
+	GetName() ([]rune, bool)
 	GetChildren() []PrefixCompleterInterface
 	SetChildren(children []PrefixCompleterInterface)
 }
@@ -19,7 +19,7 @@ type PrefixCompleterInterface interface {
 type DynamicPrefixCompleterInterface interface {
 	PrefixCompleterInterface
 	IsDynamic() bool
-	GetDynamicNames(line []rune) [][]rune
+	GetDynamicNames(line []rune) ([][]rune, bool)
 }
 
 type PrefixCompleter struct {
@@ -27,6 +27,7 @@ type PrefixCompleter struct {
 	Dynamic  bool
 	Callback DynamicCompleteFunc
 	Children []PrefixCompleterInterface
+	FormatAsIdentifier bool
 }
 
 func (p *PrefixCompleter) Tree(prefix string) string {
@@ -36,14 +37,15 @@ func (p *PrefixCompleter) Tree(prefix string) string {
 }
 
 func Print(p PrefixCompleterInterface, prefix string, level int, buf *bytes.Buffer) {
-	if strings.TrimSpace(string(p.GetName())) != "" {
+	name, _ := p.GetName()
+	if strings.TrimSpace(string(name)) != "" {
 		buf.WriteString(prefix)
 		if level > 0 {
 			buf.WriteString("├")
 			buf.WriteString(strings.Repeat("─", (level*4)-2))
 			buf.WriteString(" ")
 		}
-		buf.WriteString(string(p.GetName()) + "\n")
+		buf.WriteString(string(name) + "\n")
 		level++
 	}
 	for _, ch := range p.GetChildren() {
@@ -59,8 +61,8 @@ func (p *PrefixCompleter) IsDynamic() bool {
 	return p.Dynamic
 }
 
-func (p *PrefixCompleter) GetName() []rune {
-	return p.Name
+func (p *PrefixCompleter) GetName() ([]rune, bool) {
+	return p.Name, p.FormatAsIdentifier
 }
 
 func (p *PrefixCompleter) GetDynamicNames(line []rune) [][]rune {
@@ -89,6 +91,17 @@ func PcItem(name string, pc ...PrefixCompleterInterface) *PrefixCompleter {
 		Name:     []rune(name),
 		Dynamic:  false,
 		Children: pc,
+		FormatAsIdentifier:false,
+	}
+}
+
+func PcItemForIdentifier(name string, pc ...PrefixCompleterInterface) *PrefixCompleter {
+	name += " "
+	return &PrefixCompleter{
+		Name:     []rune(name),
+		Dynamic:  false,
+		Children: pc,
+		FormatAsIdentifier:true,
 	}
 }
 
@@ -97,18 +110,28 @@ func PcItemDynamic(callback DynamicCompleteFunc, pc ...PrefixCompleterInterface)
 		Callback: callback,
 		Dynamic:  true,
 		Children: pc,
+		FormatAsIdentifier:false,
 	}
 }
 
-func (p *PrefixCompleter) Do(line []rune, pos int) (newLine [][]rune, offset int) {
+func PcItemDynamicForIdentifier(callback DynamicCompleteFunc, pc ...PrefixCompleterInterface) *PrefixCompleter {
+	return &PrefixCompleter{
+		Callback: callback,
+		Dynamic:  true,
+		Children: pc,
+		FormatAsIdentifier:true,
+	}
+}
+
+func (p *PrefixCompleter) Do(line []rune, pos int) (newLine [][]rune, offset int, formatAsIdentifier bool) {
 	return doInternal(p, line, pos, line)
 }
 
-func Do(p PrefixCompleterInterface, line []rune, pos int) (newLine [][]rune, offset int) {
+func Do(p PrefixCompleterInterface, line []rune, pos int) (newLine [][]rune, offset int, formatAsIdentifier bool) {
 	return doInternal(p, line, pos, line)
 }
 
-func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []rune) (newLine [][]rune, offset int) {
+func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []rune) (newLine [][]rune, offset int, formatAsIdentifier bool) {
 	line = runes.TrimSpaceLeft(line[:pos])
 	goNext := false
 	var lineCompleter PrefixCompleterInterface
@@ -117,16 +140,16 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 
 		childDynamic, ok := child.(DynamicPrefixCompleterInterface)
 		if ok && childDynamic.IsDynamic() {
-			childNames = childDynamic.GetDynamicNames(origLine)
+			childNames, formatAsIdentifier = childDynamic.GetDynamicNames(origLine)
 		} else {
-			childNames[0] = child.GetName()
+			childNames[0], formatAsIdentifier = child.GetName()
 		}
 
 		for _, childName := range childNames {
 			if len(line) >= len(childName) {
-				if runes.HasPrefix(line, childName) {
+				if runes.HasPrefixFold(line, childName) {
 					if len(line) == len(childName) {
-						newLine = append(newLine, []rune{' '})
+						newLine = append(newLine, append(childName, ' '))
 					} else {
 						newLine = append(newLine, childName)
 					}
@@ -135,8 +158,8 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 					goNext = true
 				}
 			} else {
-				if runes.HasPrefix(childName, line) {
-					newLine = append(newLine, childName[len(line):])
+				if runes.HasPrefixFold(childName, line) {
+					newLine = append(newLine, childName)
 					offset = len(line)
 					lineCompleter = child
 				}
