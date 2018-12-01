@@ -48,7 +48,7 @@ func newOpCompleter(w io.Writer, op *Operation, width int) *opCompleter {
 
 func (o *opCompleter) doSelect() {
 	if len(o.candidate) == 1 {
-		o.op.buf.WriteRunes(o.candidate[0])
+		o.op.buf.ReplaceRunes(o.candidate[0], o.candidateOff)
 		o.ExitCompleteMode(false)
 		return
 	}
@@ -90,17 +90,9 @@ func (o *opCompleter) OnComplete() bool {
 		return true
 	}
 
-	// only Aggregate candidates in non-complete mode
 	if !o.IsInCompleteMode() {
 		if len(newLines) == 1 {
-			buf.WriteRunes(newLines[0])
-			o.ExitCompleteMode(false)
-			return true
-		}
-
-		same, size := runes.Aggregate(newLines)
-		if size > 0 {
-			buf.WriteRunes(same)
+			buf.ReplaceRunes(newLines[0], offset)
 			o.ExitCompleteMode(false)
 			return true
 		}
@@ -123,7 +115,7 @@ func (o *opCompleter) HandleCompleteSelect(r rune) bool {
 	switch r {
 	case CharEnter, CharCtrlJ:
 		next = false
-		o.op.buf.WriteRunes(o.op.candidate[o.op.candidateChoise])
+		o.op.buf.ReplaceRunes(o.op.candidate[o.op.candidateChoise], o.op.candidateOff)
 		o.ExitCompleteMode(false)
 	case CharLineStart:
 		num := o.candidateChoise % o.candidateColNum
@@ -197,8 +189,7 @@ func (o *opCompleter) CompleteRefresh() {
 			colWidth = w
 		}
 	}
-	colWidth += o.candidateOff + 1
-	same := o.op.buf.RuneSlice(-o.candidateOff)
+	colWidth++
 
 	// -1 to avoid reach the end of line
 	width := o.width - 1
@@ -219,9 +210,8 @@ func (o *opCompleter) CompleteRefresh() {
 		if inSelect {
 			buf.WriteString("\033[30;47m")
 		}
-		buf.WriteString(string(same))
 		buf.WriteString(string(c))
-		buf.Write(bytes.Repeat([]byte(" "), colWidth-runes.WidthAll(c)-runes.WidthAll(same)))
+		buf.Write(bytes.Repeat([]byte(" "), colWidth-runes.WidthAll(c)))
 
 		if inSelect {
 			buf.WriteString("\033[0m")

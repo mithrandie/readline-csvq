@@ -43,7 +43,7 @@ func RetSegment(segments [][]rune, cands [][]rune, idx int) ([][]rune, int) {
 	ret := make([][]rune, 0, len(cands))
 	lastSegment := segments[len(segments)-1]
 	for _, cand := range cands {
-		if !runes.HasPrefix(cand, lastSegment) {
+		if !runes.HasPrefixFold(cand, lastSegment) {
 			continue
 		}
 		ret = append(ret, cand[len(lastSegment):])

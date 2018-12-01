@@ -124,9 +124,9 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 
 		for _, childName := range childNames {
 			if len(line) >= len(childName) {
-				if runes.HasPrefix(line, childName) {
+				if runes.HasPrefixFold(line, childName) {
 					if len(line) == len(childName) {
-						newLine = append(newLine, []rune{' '})
+						newLine = append(newLine, append(childName, ' '))
 					} else {
 						newLine = append(newLine, childName)
 					}
@@ -135,8 +135,8 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 					goNext = true
 				}
 			} else {
-				if runes.HasPrefix(childName, line) {
-					newLine = append(newLine, childName[len(line):])
+				if runes.HasPrefixFold(childName, line) {
+					newLine = append(newLine, childName)
 					offset = len(line)
 					lineCompleter = child
 				}

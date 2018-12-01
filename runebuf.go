@@ -170,6 +170,23 @@ func (r *RuneBuffer) WriteRunes(s []rune) {
 	})
 }
 
+func (r *RuneBuffer) ReplaceRunes(s []rune, offset int) {
+	r.Refresh(func() {
+		if r.idx == 0 || offset == 0 {
+			return
+		}
+
+		if r.idx < offset {
+			offset = r.idx
+		}
+
+		r.idx = r.idx - offset
+		r.buf = append(r.buf[:r.idx], r.buf[r.idx+offset:]...)
+	})
+
+	r.WriteRunes(s)
+}
+
 func (r *RuneBuffer) MoveForward() {
 	r.Refresh(func() {
 		if r.idx == len(r.buf) {
