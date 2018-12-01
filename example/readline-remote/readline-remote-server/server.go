@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/chzyer/readline"
+	"github.com/mithrandie/readline-csvq"
 )
 
 func main() {
