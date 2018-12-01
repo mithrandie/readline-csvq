@@ -65,12 +65,12 @@ func (p *PrefixCompleter) GetName() ([]rune, bool) {
 	return p.Name, p.FormatAsIdentifier
 }
 
-func (p *PrefixCompleter) GetDynamicNames(line []rune) [][]rune {
+func (p *PrefixCompleter) GetDynamicNames(line []rune) ([][]rune, bool) {
 	var names = [][]rune{}
 	for _, name := range p.Callback(string(line)) {
 		names = append(names, []rune(name+" "))
 	}
-	return names
+	return names, p.FormatAsIdentifier
 }
 
 func (p *PrefixCompleter) GetChildren() []PrefixCompleterInterface {
