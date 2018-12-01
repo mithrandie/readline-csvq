@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 type runeBufferBck struct {
@@ -170,7 +171,7 @@ func (r *RuneBuffer) WriteRunes(s []rune) {
 	})
 }
 
-func (r *RuneBuffer) ReplaceRunes(s []rune, offset int) {
+func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool) {
 	r.Refresh(func() {
 		if r.idx == 0 || offset == 0 {
 			return
@@ -184,7 +185,58 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int) {
 		r.buf = append(r.buf[:r.idx], r.buf[r.idx+offset:]...)
 	})
 
+	if formatAsIdentifier {
+		s = r.FormatAsIdentifier(s)
+	}
+
 	r.WriteRunes(s)
+}
+
+func (r *RuneBuffer) FormatAsIdentifier(s []rune) []rune {
+	var endIdx int
+	for i := len(s)-1; i >= 0; i-- {
+		if unicode.IsSpace(s[i]) {
+			continue
+		}
+		endIdx = i+1
+		break
+	}
+	trimmed := s[:endIdx]
+
+	if len(trimmed) < 1 {
+		return s
+	}
+
+	needToBeEnclosed := false
+	if trimmed[0] != '_' && !unicode.IsLetter(trimmed[0]) {
+		needToBeEnclosed = true
+	} else {
+		for i := 1; i < len(trimmed); i++ {
+			if s[i] != '_' && !unicode.IsLetter(s[i]) && !unicode.IsDigit(s[i]) {
+				needToBeEnclosed = true
+				break
+			}
+		}
+	}
+
+	if !needToBeEnclosed {
+		return s
+	}
+
+	ident := make([]rune, 0, len(s)+5)
+	ident = append(ident, '`')
+	for _, ch := range trimmed {
+		if ch == '`' {
+			ident = append(ident, '\\', '`')
+		} else {
+			ident = append(ident, ch)
+		}
+	}
+	ident = append(ident, '`')
+	for i := 0; i < len(s)-len(trimmed); i++ {
+		ident = append(ident, ' ')
+	}
+	return ident
 }
 
 func (r *RuneBuffer) MoveForward() {
