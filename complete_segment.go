@@ -39,11 +39,11 @@ type SegmentComplete struct {
 	SegmentCompleter
 }
 
-func RetSegment(segments [][]rune, cands [][]rune, idx int) ([][]rune, int) {
+func RetSegment(segments [][]rune, cands [][]rune, idx int, formatAsIdentifier bool) ([][]rune, int) {
 	ret := make([][]rune, 0, len(cands))
 	lastSegment := segments[len(segments)-1]
 	for _, cand := range cands {
-		if !runes.HasPrefixFold(cand, lastSegment) {
+		if !runes.HasPrefixFold(cand, lastSegment, formatAsIdentifier) {
 			continue
 		}
 		ret = append(ret, cand[len(lastSegment):])
@@ -74,7 +74,7 @@ func (c *SegmentComplete) Do(line []rune, pos int) (newLine [][]rune, offset int
 	segment, idx := SplitSegment(line, pos)
 
 	cands := c.DoSegment(segment, idx)
-	newLine, offset = RetSegment(segment, cands, idx)
+	newLine, offset = RetSegment(segment, cands, idx, formatAsIdentifier)
 	for idx := range newLine {
 		newLine[idx] = append(newLine[idx], ' ')
 	}

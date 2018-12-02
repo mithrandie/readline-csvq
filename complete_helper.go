@@ -6,7 +6,7 @@ import (
 )
 
 // Caller type for dynamic completion
-type DynamicCompleteFunc func(string) []string
+type DynamicCompleteFunc func(string, string) []string
 
 type PrefixCompleterInterface interface {
 	Print(prefix string, level int, buf *bytes.Buffer)
@@ -19,14 +19,14 @@ type PrefixCompleterInterface interface {
 type DynamicPrefixCompleterInterface interface {
 	PrefixCompleterInterface
 	IsDynamic() bool
-	GetDynamicNames(line []rune) ([][]rune, bool)
+	GetDynamicNames(line []rune, origLine []rune) ([][]rune, bool)
 }
 
 type PrefixCompleter struct {
-	Name     []rune
-	Dynamic  bool
-	Callback DynamicCompleteFunc
-	Children []PrefixCompleterInterface
+	Name               []rune
+	Dynamic            bool
+	Callback           DynamicCompleteFunc
+	Children           []PrefixCompleterInterface
 	FormatAsIdentifier bool
 }
 
@@ -65,12 +65,12 @@ func (p *PrefixCompleter) GetName() ([]rune, bool) {
 	return p.Name, p.FormatAsIdentifier
 }
 
-func (p *PrefixCompleter) GetDynamicNames(line []rune) [][]rune {
+func (p *PrefixCompleter) GetDynamicNames(line []rune, origLine []rune) ([][]rune, bool) {
 	var names = [][]rune{}
-	for _, name := range p.Callback(string(line)) {
+	for _, name := range p.Callback(string(line), string(origLine)) {
 		names = append(names, []rune(name+" "))
 	}
-	return names
+	return names, p.FormatAsIdentifier
 }
 
 func (p *PrefixCompleter) GetChildren() []PrefixCompleterInterface {
@@ -88,38 +88,38 @@ func NewPrefixCompleter(pc ...PrefixCompleterInterface) *PrefixCompleter {
 func PcItem(name string, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	name += " "
 	return &PrefixCompleter{
-		Name:     []rune(name),
-		Dynamic:  false,
-		Children: pc,
-		FormatAsIdentifier:false,
+		Name:               []rune(name),
+		Dynamic:            false,
+		Children:           pc,
+		FormatAsIdentifier: false,
 	}
 }
 
 func PcItemForIdentifier(name string, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	name += " "
 	return &PrefixCompleter{
-		Name:     []rune(name),
-		Dynamic:  false,
-		Children: pc,
-		FormatAsIdentifier:true,
+		Name:               []rune(name),
+		Dynamic:            false,
+		Children:           pc,
+		FormatAsIdentifier: true,
 	}
 }
 
 func PcItemDynamic(callback DynamicCompleteFunc, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	return &PrefixCompleter{
-		Callback: callback,
-		Dynamic:  true,
-		Children: pc,
-		FormatAsIdentifier:false,
+		Callback:           callback,
+		Dynamic:            true,
+		Children:           pc,
+		FormatAsIdentifier: false,
 	}
 }
 
 func PcItemDynamicForIdentifier(callback DynamicCompleteFunc, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	return &PrefixCompleter{
-		Callback: callback,
-		Dynamic:  true,
-		Children: pc,
-		FormatAsIdentifier:true,
+		Callback:           callback,
+		Dynamic:            true,
+		Children:           pc,
+		FormatAsIdentifier: true,
 	}
 }
 
@@ -140,14 +140,14 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 
 		childDynamic, ok := child.(DynamicPrefixCompleterInterface)
 		if ok && childDynamic.IsDynamic() {
-			childNames, formatAsIdentifier = childDynamic.GetDynamicNames(origLine)
+			childNames, formatAsIdentifier = childDynamic.GetDynamicNames(line, origLine)
 		} else {
 			childNames[0], formatAsIdentifier = child.GetName()
 		}
 
 		for _, childName := range childNames {
 			if len(line) >= len(childName) {
-				if runes.HasPrefixFold(line, childName) {
+				if runes.HasPrefixFold(line, childName, formatAsIdentifier) {
 					if len(line) == len(childName) {
 						newLine = append(newLine, append(childName, ' '))
 					} else {
@@ -158,7 +158,7 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 					goNext = true
 				}
 			} else {
-				if runes.HasPrefixFold(childName, line) {
+				if runes.HasPrefixFold(childName, line, formatAsIdentifier) {
 					newLine = append(newLine, childName)
 					offset = len(line)
 					lineCompleter = child

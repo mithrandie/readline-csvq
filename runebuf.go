@@ -182,17 +182,28 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool)
 		}
 
 		r.idx = r.idx - offset
-		r.buf = append(r.buf[:r.idx], r.buf[r.idx+offset:]...)
+		nextIdx := r.idx+offset
+		if nextIdx < len(r.buf) && r.buf[nextIdx] == '`' {
+			nextIdx++
+		}
+		r.buf = append(r.buf[:r.idx], r.buf[nextIdx:]...)
 	})
 
+	curOffset := 0
 	if formatAsIdentifier {
-		s = r.FormatAsIdentifier(s)
+		s, curOffset = r.FormatAsIdentifier(s)
 	}
 
 	r.WriteRunes(s)
+
+	if curOffset != 0 {
+		r.Refresh(func() {
+			r.idx += curOffset
+		})
+	}
 }
 
-func (r *RuneBuffer) FormatAsIdentifier(s []rune) []rune {
+func (r *RuneBuffer) FormatAsIdentifier(s []rune) ([]rune, int) {
 	var endIdx int
 	for i := len(s)-1; i >= 0; i-- {
 		if unicode.IsSpace(s[i]) {
@@ -204,7 +215,7 @@ func (r *RuneBuffer) FormatAsIdentifier(s []rune) []rune {
 	trimmed := s[:endIdx]
 
 	if len(trimmed) < 1 {
-		return s
+		return s, 0
 	}
 
 	needToBeEnclosed := false
@@ -220,7 +231,7 @@ func (r *RuneBuffer) FormatAsIdentifier(s []rune) []rune {
 	}
 
 	if !needToBeEnclosed {
-		return s
+		return s, 0
 	}
 
 	ident := make([]rune, 0, len(s)+5)
@@ -233,10 +244,12 @@ func (r *RuneBuffer) FormatAsIdentifier(s []rune) []rune {
 		}
 	}
 	ident = append(ident, '`')
-	for i := 0; i < len(s)-len(trimmed); i++ {
+
+	if len(r.buf) <= r.idx || r.buf[r.idx] != ' ' {
 		ident = append(ident, ' ')
+		return ident, -2
 	}
-	return ident
+	return ident, -1
 }
 
 func (r *RuneBuffer) MoveForward() {

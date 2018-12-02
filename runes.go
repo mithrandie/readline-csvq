@@ -173,7 +173,23 @@ func (Runes) Copy(r []rune) []rune {
 	return n
 }
 
-func (Runes) HasPrefixFold(r, prefix []rune) bool {
+func (Runes) HasPrefixFold(r, prefix []rune, formatAsIdentifier bool) bool {
+	if formatAsIdentifier {
+		stripped := make([]rune, 0, len(prefix))
+		quoted := false
+		for i := 0; i < len(prefix); i++ {
+			if (i == 0 && prefix[i] == '`') || (i == len(prefix)-1 && prefix[i] == '`') {
+				quoted = true
+				continue
+			}
+			if quoted && i == '\\' && i + 1 <len(prefix) && prefix[i+1] == '`' {
+				i++
+			}
+			stripped = append(stripped, prefix[i])
+		}
+		prefix = stripped
+	}
+
 	if len(r) < len(prefix) {
 		return false
 	}
