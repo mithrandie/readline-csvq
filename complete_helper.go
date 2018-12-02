@@ -23,10 +23,10 @@ type DynamicPrefixCompleterInterface interface {
 }
 
 type PrefixCompleter struct {
-	Name     []rune
-	Dynamic  bool
-	Callback DynamicCompleteFunc
-	Children []PrefixCompleterInterface
+	Name               []rune
+	Dynamic            bool
+	Callback           DynamicCompleteFunc
+	Children           []PrefixCompleterInterface
 	FormatAsIdentifier bool
 }
 
@@ -88,38 +88,38 @@ func NewPrefixCompleter(pc ...PrefixCompleterInterface) *PrefixCompleter {
 func PcItem(name string, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	name += " "
 	return &PrefixCompleter{
-		Name:     []rune(name),
-		Dynamic:  false,
-		Children: pc,
-		FormatAsIdentifier:false,
+		Name:               []rune(name),
+		Dynamic:            false,
+		Children:           pc,
+		FormatAsIdentifier: false,
 	}
 }
 
 func PcItemForIdentifier(name string, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	name += " "
 	return &PrefixCompleter{
-		Name:     []rune(name),
-		Dynamic:  false,
-		Children: pc,
-		FormatAsIdentifier:true,
+		Name:               []rune(name),
+		Dynamic:            false,
+		Children:           pc,
+		FormatAsIdentifier: true,
 	}
 }
 
 func PcItemDynamic(callback DynamicCompleteFunc, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	return &PrefixCompleter{
-		Callback: callback,
-		Dynamic:  true,
-		Children: pc,
-		FormatAsIdentifier:false,
+		Callback:           callback,
+		Dynamic:            true,
+		Children:           pc,
+		FormatAsIdentifier: false,
 	}
 }
 
 func PcItemDynamicForIdentifier(callback DynamicCompleteFunc, pc ...PrefixCompleterInterface) *PrefixCompleter {
 	return &PrefixCompleter{
-		Callback: callback,
-		Dynamic:  true,
-		Children: pc,
-		FormatAsIdentifier:true,
+		Callback:           callback,
+		Dynamic:            true,
+		Children:           pc,
+		FormatAsIdentifier: true,
 	}
 }
 
