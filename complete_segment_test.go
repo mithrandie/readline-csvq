@@ -49,7 +49,7 @@ func TestRetSegment(t *testing.T) {
 		{sr("add"), sr("add", "adddomain"), 2, sr("", "domain"), 2},
 	}
 	for idx, r := range ret {
-		ret, pos := RetSegment(r.Segments, r.Cands, r.idx)
+		ret, pos := RetSegment(r.Segments, r.Cands, r.idx, false)
 		test.Equal(ret, r.Ret, fmt.Errorf("%v", idx))
 		test.Equal(pos, r.pos, fmt.Errorf("%v", idx))
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 // Caller type for dynamic completion
-type DynamicCompleteFunc func(string) []string
+type DynamicCompleteFunc func(string, string) []string
 
 type PrefixCompleterInterface interface {
 	Print(prefix string, level int, buf *bytes.Buffer)
@@ -19,7 +19,7 @@ type PrefixCompleterInterface interface {
 type DynamicPrefixCompleterInterface interface {
 	PrefixCompleterInterface
 	IsDynamic() bool
-	GetDynamicNames(line []rune) ([][]rune, bool)
+	GetDynamicNames(line []rune, origLine []rune) ([][]rune, bool)
 }
 
 type PrefixCompleter struct {
@@ -65,9 +65,9 @@ func (p *PrefixCompleter) GetName() ([]rune, bool) {
 	return p.Name, p.FormatAsIdentifier
 }
 
-func (p *PrefixCompleter) GetDynamicNames(line []rune) ([][]rune, bool) {
+func (p *PrefixCompleter) GetDynamicNames(line []rune, origLine []rune) ([][]rune, bool) {
 	var names = [][]rune{}
-	for _, name := range p.Callback(string(line)) {
+	for _, name := range p.Callback(string(line), string(origLine)) {
 		names = append(names, []rune(name+" "))
 	}
 	return names, p.FormatAsIdentifier
@@ -140,14 +140,14 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 
 		childDynamic, ok := child.(DynamicPrefixCompleterInterface)
 		if ok && childDynamic.IsDynamic() {
-			childNames, formatAsIdentifier = childDynamic.GetDynamicNames(origLine)
+			childNames, formatAsIdentifier = childDynamic.GetDynamicNames(line, origLine)
 		} else {
 			childNames[0], formatAsIdentifier = child.GetName()
 		}
 
 		for _, childName := range childNames {
 			if len(line) >= len(childName) {
-				if runes.HasPrefixFold(line, childName) {
+				if runes.HasPrefixFold(line, childName, formatAsIdentifier) {
 					if len(line) == len(childName) {
 						newLine = append(newLine, append(childName, ' '))
 					} else {
@@ -158,7 +158,7 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 					goNext = true
 				}
 			} else {
-				if runes.HasPrefixFold(childName, line) {
+				if runes.HasPrefixFold(childName, line, formatAsIdentifier) {
 					newLine = append(newLine, childName)
 					offset = len(line)
 					lineCompleter = child
