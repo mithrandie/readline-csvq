@@ -2,17 +2,18 @@ package readline
 
 import (
 	"bytes"
+	"sort"
 	"strings"
 	"unicode"
 )
 
 // Caller type for dynamic completion
-type DynamicCompleteFunc func(string, string, int) ([]string, bool)
+type DynamicCompleteFunc func(string, string, int) CandidateList
 
 type PrefixCompleterInterface interface {
 	Print(prefix string, level int, buf *bytes.Buffer)
-	Do(line []rune, pos int, index int) (newLine [][]rune, length int, formatAsIdentifier bool)
-	GetName() ([]rune, bool)
+	Do(line []rune, pos int, index int) (newLine CandidateList, length int)
+	GetName() Candidate
 	GetChildren() []PrefixCompleterInterface
 	SetChildren(children []PrefixCompleterInterface)
 	IsAppendOnly() bool
@@ -21,7 +22,35 @@ type PrefixCompleterInterface interface {
 type DynamicPrefixCompleterInterface interface {
 	PrefixCompleterInterface
 	IsDynamic() bool
-	GetDynamicNames(line []rune, origLine []rune, index int) ([][]rune, bool)
+	GetDynamicNames(line []rune, origLine []rune, index int) CandidateList
+}
+
+type Candidate struct {
+	Name               []rune
+	FormatAsIdentifier bool
+	AppendSpace        bool
+}
+
+func (cand Candidate) StringName() string {
+	return string(cand.Name)
+}
+
+type CandidateList []Candidate
+
+func (l CandidateList) Len() int {
+	return len(l)
+}
+
+func (l CandidateList) Less(i, j int) bool {
+	return strings.Compare(strings.ToUpper(string(l[i].Name)), strings.ToUpper(string(l[j].Name))) < 0
+}
+
+func (l CandidateList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+func (l CandidateList) Sort() {
+	sort.Sort(l)
 }
 
 type PrefixCompleter struct {
@@ -30,6 +59,7 @@ type PrefixCompleter struct {
 	Callback           DynamicCompleteFunc
 	Children           []PrefixCompleterInterface
 	FormatAsIdentifier bool
+	AppendSpace        bool
 	AppendOnly         bool
 }
 
@@ -40,15 +70,15 @@ func (p *PrefixCompleter) Tree(prefix string) string {
 }
 
 func Print(p PrefixCompleterInterface, prefix string, level int, buf *bytes.Buffer) {
-	name, _ := p.GetName()
-	if strings.TrimSpace(string(name)) != "" {
+	cand := p.GetName()
+	if strings.TrimSpace(cand.StringName()) != "" {
 		buf.WriteString(prefix)
 		if level > 0 {
 			buf.WriteString("├")
 			buf.WriteString(strings.Repeat("─", (level*4)-2))
 			buf.WriteString(" ")
 		}
-		buf.WriteString(string(name) + "\n")
+		buf.WriteString(cand.StringName() + "\n")
 		level++
 	}
 	for _, ch := range p.GetChildren() {
@@ -64,17 +94,20 @@ func (p *PrefixCompleter) IsDynamic() bool {
 	return p.Dynamic
 }
 
-func (p *PrefixCompleter) GetName() ([]rune, bool) {
-	return p.Name, p.FormatAsIdentifier
+func (p *PrefixCompleter) GetName() Candidate {
+	return Candidate{
+		Name:               p.Name,
+		FormatAsIdentifier: p.FormatAsIdentifier,
+		AppendSpace:        p.AppendSpace,
+	}
 }
 
-func (p *PrefixCompleter) GetDynamicNames(line []rune, origLine []rune, index int) ([][]rune, bool) {
-	c, formatAsIdentifier := p.Callback(string(line), string(origLine), index)
-	names := make([][]rune, 0, len(c))
-	for _, name := range c {
-		names = append(names, []rune(name+" "))
+func (p *PrefixCompleter) GetDynamicNames(line []rune, origLine []rune, index int) CandidateList {
+	cans := p.Callback(string(line), string(origLine), index)
+	for i := range cans {
+		cans[i].Name = append(cans[i].Name, ' ')
 	}
-	return names, formatAsIdentifier
+	return cans
 }
 
 func (p *PrefixCompleter) GetChildren() []PrefixCompleterInterface {
@@ -100,6 +133,7 @@ func PcItem(name string, pc ...PrefixCompleterInterface) *PrefixCompleter {
 		Dynamic:            false,
 		Children:           pc,
 		FormatAsIdentifier: false,
+		AppendSpace:        true,
 		AppendOnly:         false,
 	}
 }
@@ -110,24 +144,25 @@ func PcItemDynamic(callback DynamicCompleteFunc, pc ...PrefixCompleterInterface)
 		Dynamic:            true,
 		Children:           pc,
 		FormatAsIdentifier: false,
+		AppendSpace:        true,
 		AppendOnly:         false,
 	}
 }
 
-func (p *PrefixCompleter) Do(line []rune, pos int, index int) (newLine [][]rune, offset int, formatAsIdentifier bool) {
+func (p *PrefixCompleter) Do(line []rune, pos int, index int) (newLine CandidateList, offset int) {
 	return doInternal(p, line, pos, line, index)
 }
 
-func Do(p PrefixCompleterInterface, line []rune, pos int, index int) (newLine [][]rune, offset int, formatAsIdentifier bool) {
+func Do(p PrefixCompleterInterface, line []rune, pos int, index int) (newLine CandidateList, offset int) {
 	return doInternal(p, line, pos, line, index)
 }
 
-func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []rune, index int) (newLine [][]rune, offset int, formatAsIdentifier bool) {
+func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []rune, index int) (newLine CandidateList, offset int) {
 	line = runes.TrimSpaceLeft(line[:pos])
 	goNext := false
 	var lineCompleter PrefixCompleterInterface
 	for _, child := range p.GetChildren() {
-		childNames := make([][]rune, 1)
+		candidates := make(CandidateList, 1)
 
 		if child.IsAppendOnly() {
 			line = []rune(LastElement(string(line)))
@@ -135,26 +170,25 @@ func doInternal(p PrefixCompleterInterface, line []rune, pos int, origLine []run
 
 		childDynamic, ok := child.(DynamicPrefixCompleterInterface)
 		if ok && childDynamic.IsDynamic() {
-			childNames, formatAsIdentifier = childDynamic.GetDynamicNames(line, origLine, index)
+			candidates = childDynamic.GetDynamicNames(line, origLine, index)
 		} else {
-			childNames[0], formatAsIdentifier = child.GetName()
+			candidates[0] = child.GetName()
 		}
 
-		for _, childName := range childNames {
-			if len(line) >= len(childName) {
-				if runes.HasPrefixFold(line, childName, formatAsIdentifier) {
-					if len(line) == len(childName) {
-						newLine = append(newLine, append(childName, ' '))
-					} else {
-						newLine = append(newLine, childName)
+		for _, candidate := range candidates {
+			if len(line) >= len(candidate.Name) {
+				if runes.HasPrefixFold(line, candidate.Name, candidate.FormatAsIdentifier) {
+					if len(line) == len(candidate.Name) {
+						candidate.Name = append(candidate.Name, ' ')
 					}
-					offset = len(childName)
+					newLine = append(newLine, candidate)
+					offset = len(candidate.Name)
 					lineCompleter = child
 					goNext = true
 				}
 			} else {
-				if runes.HasPrefixFold(childName, line, formatAsIdentifier) {
-					newLine = append(newLine, childName)
+				if runes.HasPrefixFold(candidate.Name, line, candidate.FormatAsIdentifier) {
+					newLine = append(newLine, candidate)
 					offset = len(line)
 					lineCompleter = child
 				}
@@ -189,31 +223,110 @@ func LastElement(input string) string {
 	var quote rune = -1
 
 	for i := 0; i < len(src); i++ {
-		if 0 < buf.Len() || -1 < quote {
-			if -1 < quote && src[i] == '\\' {
+		if -1 < quote {
+			switch src[i] {
+			case quote:
+				quote = -1
+				buf.Reset()
+			case '\\':
 				if i+1 < len(src) && src[i+1] == quote {
 					i++
 				}
-			}
-
-			if (-1 < quote && src[i] == quote) || (quote == -1 && unicode.IsSpace(src[i])) {
-				quote = -1
-				buf.Reset()
-			} else {
+				fallthrough
+			default:
 				buf.WriteRune(src[i])
 			}
 			continue
 		}
 
-		if unicode.IsSpace(src[i]) {
+		if 0 < buf.Len() {
+			switch {
+			case unicode.IsSpace(src[i]) || src[i] == ';':
+				buf.Reset()
+			case IsUniqueToken(src[i]):
+				fallthrough
+			case IsUniqueToken(rune(buf.Bytes()[buf.Len()-1])):
+				buf.Reset()
+				fallthrough
+			default:
+				buf.WriteRune(src[i])
+			}
 			continue
 		}
 
-		if src[i] == '\'' || src[i] == '"' || src[i] == '`' {
+		if unicode.IsSpace(src[i]) || src[i] == ';' {
+			continue
+		}
+
+		if IsQuotationMark(src[i]) {
 			quote = src[i]
 		}
 
 		buf.WriteRune(src[i])
 	}
 	return buf.String()
+}
+
+func IsUniqueToken(r rune) bool {
+	switch r {
+	case ',', '(', ')':
+		return true
+	}
+	return false
+}
+
+var EncloseMark = map[rune]rune{
+	'\'': '\'',
+	'"':  '"',
+	'`':  '`',
+	'(':  ')',
+	'[':  ']',
+	'{':  '}',
+}
+
+func IsQuotationMark(r rune) bool {
+	return r == '\'' || r == '"' || r == '`'
+}
+
+func IsBracket(r rune) bool {
+	return r == '(' || r == '[' || r == '{'
+}
+
+func LiteralIsEnclosed(mark rune, line []rune) bool {
+	var enclosed = true
+	for i := 0; i < len(line); i++ {
+		if !enclosed {
+			switch line[i] {
+			case '\\':
+				if i+1 < len(line) && line[i+1] == EncloseMark[mark] {
+					i++
+				}
+			case EncloseMark[mark]:
+				enclosed = true
+			}
+			continue
+		}
+
+		if line[i] == mark {
+			enclosed = false
+		}
+	}
+	return enclosed
+}
+
+func BracketIsEnclosed(mark rune, line []rune) bool {
+	var blockLevel = 0
+	for i := 0; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			if i+1 < len(line) && line[i+1] == EncloseMark[mark] {
+				i++
+			}
+		case mark:
+			blockLevel++
+		case EncloseMark[mark]:
+			blockLevel--
+		}
+	}
+	return blockLevel < 1
 }

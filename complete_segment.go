@@ -39,14 +39,14 @@ type SegmentComplete struct {
 	SegmentCompleter
 }
 
-func RetSegment(segments [][]rune, cands [][]rune, idx int, formatAsIdentifier bool) ([][]rune, int) {
-	ret := make([][]rune, 0, len(cands))
+func RetSegment(segments [][]rune, cands [][]rune, idx int) (CandidateList, int) {
+	ret := make(CandidateList, 0, len(cands))
 	lastSegment := segments[len(segments)-1]
 	for _, cand := range cands {
-		if !runes.HasPrefixFold(cand, lastSegment, formatAsIdentifier) {
+		if !runes.HasPrefixFold(cand, lastSegment, false) {
 			continue
 		}
-		ret = append(ret, cand[len(lastSegment):])
+		ret = append(ret, Candidate{Name: cand[len(lastSegment):], FormatAsIdentifier: false, AppendSpace: true})
 	}
 	return ret, idx
 }
@@ -69,14 +69,13 @@ func SplitSegment(line []rune, pos int) ([][]rune, int) {
 	return segs, pos
 }
 
-func (c *SegmentComplete) Do(line []rune, pos int, index int) (newLine [][]rune, offset int, formatAsIdentifier bool) {
-
+func (c *SegmentComplete) Do(line []rune, pos int, index int) (newLine CandidateList, offset int) {
 	segment, idx := SplitSegment(line, pos)
 
 	cands := c.DoSegment(segment, idx)
-	newLine, offset = RetSegment(segment, cands, idx, formatAsIdentifier)
+	newLine, offset = RetSegment(segment, cands, idx)
 	for idx := range newLine {
-		newLine[idx] = append(newLine[idx], ' ')
+		newLine[idx].Name = append(newLine[idx].Name, ' ')
 	}
-	return newLine, offset, false
+	return newLine, offset
 }

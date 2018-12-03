@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,7 +37,7 @@ type RuneBuffer struct {
 	sync.Mutex
 }
 
-func (r* RuneBuffer) pushKill(text []rune) {
+func (r *RuneBuffer) pushKill(text []rune) {
 	r.lastKill = append([]rune{}, text...)
 }
 
@@ -171,7 +172,7 @@ func (r *RuneBuffer) WriteRunes(s []rune) {
 	})
 }
 
-func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool) {
+func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool, appendSpace bool) {
 	r.Refresh(func() {
 		if r.idx == 0 || offset == 0 {
 			return
@@ -181,9 +182,11 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool)
 			offset = r.idx
 		}
 
+		nextIdx := r.idx
 		r.idx = r.idx - offset
-		nextIdx := r.idx+offset
-		if nextIdx < len(r.buf) && r.buf[nextIdx] == '`' {
+		if nextIdx < len(r.buf) && r.buf[r.idx] == '`' && r.buf[nextIdx] == '`' {
+			nextIdx++
+		} else if nextIdx < len(r.buf) && r.buf[nextIdx] == ')' && strings.HasSuffix(string(s), "() ") {
 			nextIdx++
 		}
 		r.buf = append(r.buf[:r.idx], r.buf[nextIdx:]...)
@@ -192,31 +195,46 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool)
 	curOffset := 0
 	if formatAsIdentifier {
 		s, curOffset = r.FormatAsIdentifier(s)
+	} else {
+		switch {
+		case strings.HasSuffix(strings.ToUpper(string(s)), "() OVER () "):
+			s = s[:len(s)-8]
+			fallthrough
+		case strings.HasSuffix(string(s), "() "):
+			curOffset = 2
+		}
+	}
+
+	if !appendSpace || (r.idx < len(r.buf) && r.buf[r.idx] == ' ') {
+		s = s[:len(s)-1]
+		if appendSpace || 0 != curOffset {
+			curOffset--
+		}
+	}
+
+	if 0 <= r.idx-1 && (!unicode.IsSpace(r.buf[r.idx-1]) && r.buf[r.idx-1] != '(') {
+		s = append([]rune{' '}, s...)
 	}
 
 	r.WriteRunes(s)
 
-	if curOffset != 0 {
+	if 0 != curOffset {
 		r.Refresh(func() {
-			r.idx += curOffset
+			r.idx = r.idx - curOffset
 		})
 	}
 }
 
 func (r *RuneBuffer) FormatAsIdentifier(s []rune) ([]rune, int) {
 	var endIdx int
-	for i := len(s)-1; i >= 0; i-- {
+	for i := len(s) - 1; i >= 0; i-- {
 		if unicode.IsSpace(s[i]) {
 			continue
 		}
-		endIdx = i+1
+		endIdx = i + 1
 		break
 	}
 	trimmed := s[:endIdx]
-
-	if len(trimmed) < 1 {
-		return s, 0
-	}
 
 	needToBeEnclosed := false
 	if trimmed[0] != '_' && !unicode.IsLetter(trimmed[0]) {
@@ -234,22 +252,25 @@ func (r *RuneBuffer) FormatAsIdentifier(s []rune) ([]rune, int) {
 		return s, 0
 	}
 
-	ident := make([]rune, 0, len(s)+5)
-	ident = append(ident, '`')
+	identBody := make([]rune, 0, len(s)+5)
 	for _, ch := range trimmed {
 		if ch == '`' {
-			ident = append(ident, '\\', '`')
+			identBody = append(identBody, '\\', '`')
 		} else {
-			ident = append(ident, ch)
+			identBody = append(identBody, ch)
 		}
 	}
+	ident := append([]rune{'`'}, identBody...)
 	ident = append(ident, '`')
 
-	if len(r.buf) <= r.idx || r.buf[r.idx] != ' ' {
-		ident = append(ident, ' ')
-		return ident, -2
+	offset := 0
+	if (0 < len(identBody) && identBody[len(identBody)-1] == os.PathSeparator) ||
+		(len(identBody) == 1 && identBody[0] == '.') ||
+		(len(identBody) == 2 && identBody[0] == '.' && identBody[1] == '.') {
+		offset = 2
 	}
-	return ident, -1
+	ident = append(ident, ' ')
+	return ident, offset
 }
 
 func (r *RuneBuffer) MoveForward() {
@@ -303,7 +324,7 @@ func (r *RuneBuffer) DeleteWord() {
 	}
 	for i := init + 1; i < len(r.buf); i++ {
 		if !IsWordBreak(r.buf[i]) && IsWordBreak(r.buf[i-1]) {
-			r.pushKill(r.buf[r.idx:i-1])
+			r.pushKill(r.buf[r.idx : i-1])
 			r.Refresh(func() {
 				r.buf = append(r.buf[:r.idx], r.buf[i-1:]...)
 			})
@@ -432,7 +453,7 @@ func (r *RuneBuffer) Yank() {
 		return
 	}
 	r.Refresh(func() {
-		buf := make([]rune, 0, len(r.buf) + len(r.lastKill))
+		buf := make([]rune, 0, len(r.buf)+len(r.lastKill))
 		buf = append(buf, r.buf[:r.idx]...)
 		buf = append(buf, r.lastKill...)
 		buf = append(buf, r.buf[r.idx:]...)

@@ -49,7 +49,12 @@ func TestRetSegment(t *testing.T) {
 		{sr("add"), sr("add", "adddomain"), 2, sr("", "domain"), 2},
 	}
 	for idx, r := range ret {
-		ret, pos := RetSegment(r.Segments, r.Cands, r.idx, false)
+		cands, pos := RetSegment(r.Segments, r.Cands, r.idx)
+		ret := make([][]rune, 0, len(cands))
+		for _, v := range cands {
+			ret = append(ret, v.Name)
+		}
+
 		test.Equal(ret, r.Ret, fmt.Errorf("%v", idx))
 		test.Equal(pos, r.pos, fmt.Errorf("%v", idx))
 	}
@@ -160,8 +165,12 @@ func TestSegmentCompleter(t *testing.T) {
 		}
 	}
 	for i, r := range ret {
-		newLine, length, _ := s.Do([]rune(r.Line), r.Pos, r.Pos)
-		test.Equal(rs(newLine), rs(r.Ret), fmt.Errorf("%v", i))
+		newLine, length := s.Do([]rune(r.Line), r.Pos, r.Pos)
+		lines := make([][]rune, 0, len(newLine))
+		for _, v := range newLine {
+			lines = append(lines, v.Name)
+		}
+		test.Equal(rs(lines), rs(r.Ret), fmt.Errorf("%v", i))
 		test.Equal(length, r.Share, fmt.Errorf("%v", i))
 	}
 }
