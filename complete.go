@@ -67,8 +67,8 @@ func (o *opCompleter) OnComplete() bool {
 		return true
 	}
 
-	buf := o.op.buf
-	rs := buf.Runes()
+	rs := append(o.op.continuousBuf, o.op.buf.Runes()...)
+	idx := len(o.op.continuousBuf) + o.op.buf.idx
 
 	if o.IsInCompleteMode() && o.candidateSource != nil && runes.Equal(rs, o.candidateSource) {
 		o.EnterCompleteSelectMode()
@@ -78,7 +78,7 @@ func (o *opCompleter) OnComplete() bool {
 
 	o.ExitCompleteSelectMode()
 	o.candidateSource = rs
-	newLines, offset, formatAsIdentifier := o.op.cfg.AutoComplete.Do(rs, buf.idx, buf.idx)
+	newLines, offset, formatAsIdentifier := o.op.cfg.AutoComplete.Do(rs, idx, idx)
 	if len(newLines) == 0 {
 		o.ExitCompleteMode(false)
 		return true
@@ -86,7 +86,7 @@ func (o *opCompleter) OnComplete() bool {
 
 	if !o.IsInCompleteMode() {
 		if len(newLines) == 1 {
-			buf.ReplaceRunes(newLines[0], offset, formatAsIdentifier)
+			o.op.buf.ReplaceRunes(newLines[0], offset, formatAsIdentifier)
 			o.ExitCompleteMode(false)
 			return true
 		}

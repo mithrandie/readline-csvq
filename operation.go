@@ -27,6 +27,8 @@ type Operation struct {
 	errchan chan error
 	w       io.Writer
 
+	continuousBuf []rune
+
 	history *opHistory
 	*opSearch
 	*opCompleter
@@ -69,10 +71,11 @@ func (w *wrapWriter) Write(b []byte) (int, error) {
 func NewOperation(t *Terminal, cfg *Config) *Operation {
 	width := cfg.FuncGetWidth()
 	op := &Operation{
-		t:       t,
-		buf:     NewRuneBuffer(t, cfg.Prompt, cfg, width),
-		outchan: make(chan []rune),
-		errchan: make(chan error, 1),
+		t:             t,
+		buf:           NewRuneBuffer(t, cfg.Prompt, cfg, width),
+		outchan:       make(chan []rune),
+		errchan:       make(chan error, 1),
+		continuousBuf: nil,
 	}
 	op.w = op.buf.w
 	op.SetConfig(cfg)
@@ -244,6 +247,13 @@ func (o *Operation) ioloop() {
 			o.buf.MoveToLineEnd()
 			var data []rune
 			if !o.GetConfig().UniqueEditLine {
+				if 0 < o.buf.Len() && o.buf.buf[len(o.buf.buf)-1] == '\\' {
+					o.continuousBuf = append(o.continuousBuf, o.buf.Runes()[:o.buf.Len()-1]...)
+					o.continuousBuf = append(o.continuousBuf, ' ')
+				} else {
+					o.continuousBuf = nil
+				}
+
 				o.buf.WriteRune('\n')
 				data = o.buf.Reset()
 				data = data[:len(data)-1] // trim \n
