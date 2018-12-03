@@ -8,12 +8,12 @@ import (
 )
 
 type AutoCompleter interface {
-	Do(line []rune, pos int) (newLine [][]rune, length int, formatAsIdentifier bool)
+	Do(line []rune, pos int, index int) (newLine [][]rune, length int, formatAsIdentifier bool)
 }
 
 type TabCompleter struct{}
 
-func (t *TabCompleter) Do([]rune, int) ([][]rune, int, bool) {
+func (t *TabCompleter) Do([]rune, int, int) ([][]rune, int, bool) {
 	return [][]rune{[]rune("\t")}, 0, false
 }
 
@@ -22,13 +22,13 @@ type opCompleter struct {
 	op    *Operation
 	width int
 
-	inCompleteMode  bool
-	inSelectMode    bool
-	candidate       [][]rune
-	candidateSource []rune
-	candidateOff    int
-	candidateChoise int
-	candidateColNum int
+	inCompleteMode     bool
+	inSelectMode       bool
+	candidate          [][]rune
+	candidateSource    []rune
+	candidateOff       int
+	candidateChoise    int
+	candidateColNum    int
 	formatAsIdentifier bool
 }
 
@@ -78,7 +78,7 @@ func (o *opCompleter) OnComplete() bool {
 
 	o.ExitCompleteSelectMode()
 	o.candidateSource = rs
-	newLines, offset, formatAsIdentifier := o.op.cfg.AutoComplete.Do(rs, buf.idx)
+	newLines, offset, formatAsIdentifier := o.op.cfg.AutoComplete.Do(rs, buf.idx, buf.idx)
 	if len(newLines) == 0 {
 		o.ExitCompleteMode(false)
 		return true

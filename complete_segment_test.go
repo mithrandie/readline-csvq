@@ -160,7 +160,7 @@ func TestSegmentCompleter(t *testing.T) {
 		}
 	}
 	for i, r := range ret {
-		newLine, length, _ := s.Do([]rune(r.Line), r.Pos)
+		newLine, length, _ := s.Do([]rune(r.Line), r.Pos, r.Pos)
 		test.Equal(rs(newLine), rs(r.Ret), fmt.Errorf("%v", i))
 		test.Equal(length, r.Share, fmt.Errorf("%v", i))
 	}

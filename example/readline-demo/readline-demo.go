@@ -18,14 +18,14 @@ func usage(w io.Writer) {
 }
 
 // Function constructor - constructs new function for listing given directory
-func listFiles(path string) func(string, string) []string {
-	return func(line string, origLine string) []string {
+func listFiles(path string) func(string, string, int) ([]string, bool) {
+	return func(line string, origLine string, index int) ([]string, bool) {
 		names := make([]string, 0)
 		files, _ := ioutil.ReadDir(path)
 		for _, f := range files {
 			names = append(names, f.Name())
 		}
-		return names
+		return names, false
 	}
 }
 
