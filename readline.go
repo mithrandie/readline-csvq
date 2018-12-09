@@ -49,6 +49,9 @@ type Config struct {
 	// If VimMode is true, readline will in vim.insert mode by default
 	VimMode bool
 
+	// Ctrl+U
+	UseKillWholeLine bool
+
 	InterruptPrompt string
 	EOFPrompt       string
 
@@ -230,6 +233,14 @@ func (i *Instance) ReadPasswordEx(prompt string, l Listener) ([]byte, error) {
 
 func (i *Instance) ReadPassword(prompt string) ([]byte, error) {
 	return i.Operation.Password(prompt)
+}
+
+func (i *Instance) EnableKillWholeLine() {
+	i.Operation.EnableKillWholeLine()
+}
+
+func (i *Instance) DisableKillWholeLine() {
+	i.Operation.DisableKillWholeLine()
 }
 
 type Result struct {
