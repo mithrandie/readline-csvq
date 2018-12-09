@@ -192,7 +192,11 @@ func (o *Operation) ioloop() {
 			}
 			keepInSearchMode = true
 		case CharCtrlU:
-			o.buf.KillFront()
+			if o.cfg.UseKillWholeLine {
+				o.buf.Erase()
+			} else {
+				o.buf.KillFront()
+			}
 		case CharFwdSearch:
 			if !o.SearchMode(S_DIR_FWD) {
 				o.t.Bell()
@@ -496,6 +500,14 @@ func (op *Operation) SetConfig(cfg *Config) (*Config, error) {
 
 func (o *Operation) ResetHistory() {
 	o.history.Reset()
+}
+
+func (o *Operation) EnableKillWholeLine() {
+	o.cfg.UseKillWholeLine = true
+}
+
+func (o *Operation) DisableKillWholeLine() {
+	o.cfg.UseKillWholeLine = false
 }
 
 // if err is not nil, it just mean it fail to write to file
