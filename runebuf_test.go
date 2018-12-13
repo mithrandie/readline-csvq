@@ -105,6 +105,16 @@ var runeBufferReplaceRunesTests = []struct {
 		ExpectIdx:          21,
 	},
 	{
+		Word:               "column ",
+		Offset:             0,
+		FormatAsIdentifier: true,
+		AppendSpace:        false,
+		Buf:                "abcdef `table.csv`.",
+		Idx:                19,
+		Expect:             "abcdef `table.csv`.column",
+		ExpectIdx:          25,
+	},
+	{
 		Word:               "bar() ",
 		Offset:             4,
 		FormatAsIdentifier: false,

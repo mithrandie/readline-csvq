@@ -212,7 +212,7 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool,
 		}
 	}
 
-	if 0 <= r.idx-1 && (!unicode.IsSpace(r.buf[r.idx-1]) && r.buf[r.idx-1] != '(') {
+	if 0 <= r.idx-1 && !unicode.IsSpace(r.buf[r.idx-1]) && r.buf[r.idx-1] != '(' && !(formatAsIdentifier && r.buf[r.idx-1] == '.') {
 		s = append([]rune{' '}, s...)
 	}
 
