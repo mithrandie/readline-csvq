@@ -38,7 +38,7 @@ var lastElementTests = []struct {
 	},
 	{
 		Input:  "abcdef ghij,",
-		Expect: ",",
+		Expect: "",
 	},
 	{
 		Input:  "abcdef,ghij",
@@ -51,10 +51,6 @@ var lastElementTests = []struct {
 	{
 		Input:  "abcdef ;ghij",
 		Expect: "ghij",
-	},
-	{
-		Input:  "a,",
-		Expect: ",",
 	},
 	{
 		Input:  "abc/def",

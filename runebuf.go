@@ -173,6 +173,8 @@ func (r *RuneBuffer) WriteRunes(s []rune) {
 }
 
 func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool, appendSpace bool) {
+	str := strings.ToUpper(string(s))
+
 	r.Refresh(func() {
 		if r.idx == 0 || offset == 0 {
 			return
@@ -186,7 +188,9 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool,
 		r.idx = r.idx - offset
 		if nextIdx < len(r.buf) && r.buf[r.idx] == '`' && r.buf[nextIdx] == '`' {
 			nextIdx++
-		} else if nextIdx < len(r.buf) && r.buf[nextIdx] == ')' && strings.HasSuffix(string(s), "() ") {
+		} else if nextIdx+8 < len(r.buf) && strings.ToUpper(string(r.buf[nextIdx:nextIdx+9])) == ") OVER ()" && strings.HasSuffix(str, "() OVER () ") {
+			nextIdx = nextIdx + 9
+		} else if nextIdx < len(r.buf) && r.buf[nextIdx] == ')' && strings.HasSuffix(str, "() ") {
 			nextIdx++
 		}
 		r.buf = append(r.buf[:r.idx], r.buf[nextIdx:]...)
@@ -197,10 +201,9 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool,
 		s, curOffset = r.FormatAsIdentifier(s)
 	} else {
 		switch {
-		case strings.HasSuffix(strings.ToUpper(string(s)), "() OVER () "):
-			s = s[:len(s)-8]
-			fallthrough
-		case strings.HasSuffix(string(s), "() "):
+		case strings.HasSuffix(str, "() OVER () "):
+			curOffset = 10
+		case strings.HasSuffix(str, "() "):
 			curOffset = 2
 		}
 	}
@@ -212,7 +215,7 @@ func (r *RuneBuffer) ReplaceRunes(s []rune, offset int, formatAsIdentifier bool,
 		}
 	}
 
-	if 0 <= r.idx-1 && (!unicode.IsSpace(r.buf[r.idx-1]) && r.buf[r.idx-1] != '(') {
+	if 0 <= r.idx-1 && !unicode.IsSpace(r.buf[r.idx-1]) && r.buf[r.idx-1] != '(' && !(formatAsIdentifier && r.buf[r.idx-1] == '.') {
 		s = append([]rune{' '}, s...)
 	}
 

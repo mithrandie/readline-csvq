@@ -241,20 +241,15 @@ func LastElement(input string) string {
 
 		if 0 < buf.Len() {
 			switch {
-			case unicode.IsSpace(src[i]) || src[i] == ';':
+			case unicode.IsSpace(src[i]) || IsUniqueToken(src[i]):
 				buf.Reset()
-			case IsUniqueToken(src[i]):
-				fallthrough
-			case IsUniqueToken(rune(buf.Bytes()[buf.Len()-1])):
-				buf.Reset()
-				fallthrough
 			default:
 				buf.WriteRune(src[i])
 			}
 			continue
 		}
 
-		if unicode.IsSpace(src[i]) || src[i] == ';' {
+		if unicode.IsSpace(src[i]) || IsUniqueToken(src[i]) {
 			continue
 		}
 
@@ -269,7 +264,7 @@ func LastElement(input string) string {
 
 func IsUniqueToken(r rune) bool {
 	switch r {
-	case ',', '(', ')':
+	case ',', '(', ')', ';', '.':
 		return true
 	}
 	return false
