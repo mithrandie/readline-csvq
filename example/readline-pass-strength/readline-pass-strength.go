@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/mithrandie/readline-csvq"
-	zxcvbn "github.com/nbutton23/zxcvbn-go"
+	//	zxcvbn "github.com/nbutton23/zxcvbn-go"
 )
 
 const (
@@ -50,30 +50,30 @@ func Colorize(msg string, color int) string {
 
 func createStrengthPrompt(password []rune) string {
 	symbol, color := "", Red
-	strength := zxcvbn.PasswordStrength(string(password), nil)
-
-	switch {
-	case strength.Score <= 1:
-		symbol = "✗"
-		color = Red
-	case strength.Score <= 2:
-		symbol = "⚡"
-		color = Magenta
-	case strength.Score <= 3:
-		symbol = "⚠"
-		color = Yellow
-	case strength.Score <= 4:
-		symbol = "✔"
-		color = Green
-	}
-
+	//strength := zxcvbn.PasswordStrength(string(password), nil)
+	//
+	//switch {
+	//case strength.Score <= 1:
+	//	symbol = "✗"
+	//	color = Red
+	//case strength.Score <= 2:
+	//	symbol = "⚡"
+	//	color = Magenta
+	//case strength.Score <= 3:
+	//	symbol = "⚠"
+	//	color = Yellow
+	//case strength.Score <= 4:
+	//	symbol = "✔"
+	//	color = Green
+	//}
+	//
 	prompt := Colorize(symbol, color)
-	if strength.Entropy > 0 {
-		entropy := fmt.Sprintf(" %3.0f", strength.Entropy)
-		prompt += Colorize(entropy, Cyan)
-	} else {
-		prompt += Colorize(" ENT", Cyan)
-	}
+	//if strength.Entropy > 0 {
+	//	entropy := fmt.Sprintf(" %3.0f", strength.Entropy)
+	//	prompt += Colorize(entropy, Cyan)
+	//} else {
+	//	prompt += Colorize(" ENT", Cyan)
+	//}
 
 	prompt += Colorize(" New Password: ", color)
 	return prompt
