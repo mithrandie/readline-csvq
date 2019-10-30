@@ -141,3 +141,34 @@ func TestBracketIsEnclosed(t *testing.T) {
 		}
 	}
 }
+
+var bracketlIsEnclosedByRightBracketTests = []struct {
+	Input  string
+	Mark   rune
+	Expect bool
+}{
+	{
+		Input:  "abc(defghi)jkl",
+		Mark:   ')',
+		Expect: true,
+	},
+	{
+		Input:  "abc(defghi\\)jkl",
+		Mark:   ')',
+		Expect: false,
+	},
+	{
+		Input:  "abc(()defghijkl",
+		Mark:   ')',
+		Expect: false,
+	},
+}
+
+func TestBracketIsEnclosedByRightBracket(t *testing.T) {
+	for _, v := range bracketlIsEnclosedByRightBracketTests {
+		result := BracketIsEnclosedByRightBracket(v.Mark, []rune(v.Input))
+		if result != v.Expect {
+			t.Errorf("result = %t, want %t for %q", result, v.Expect, v.Input)
+		}
+	}
+}

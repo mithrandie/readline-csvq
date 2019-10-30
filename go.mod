@@ -1,6 +1,5 @@
 module github.com/mithrandie/readline-csvq
 
-require (
-	github.com/chzyer/logex v1.1.10 // indirect
-	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1
-)
+require golang.org/x/sys v0.0.0-20191029155521-f43be2a4598c
+
+go 1.11

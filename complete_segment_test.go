@@ -1,10 +1,8 @@
 package readline
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
-
-	"github.com/chzyer/test"
 )
 
 func rs(s [][]rune) []string {
@@ -24,7 +22,6 @@ func sr(s ...string) [][]rune {
 }
 
 func TestRetSegment(t *testing.T) {
-	defer test.New(t)
 	// a
 	// |- a1
 	// |--- a11
@@ -55,13 +52,16 @@ func TestRetSegment(t *testing.T) {
 			ret = append(ret, v.Name)
 		}
 
-		test.Equal(ret, r.Ret, fmt.Errorf("%v", idx))
-		test.Equal(pos, r.pos, fmt.Errorf("%v", idx))
+		if !reflect.DeepEqual(ret, r.Ret) {
+			t.Errorf("incorrect ret %v at %d", ret, idx)
+		}
+		if pos != r.pos {
+			t.Errorf("incorrect pos %d at %d", pos, idx)
+		}
 	}
 }
 
 func TestSplitSegment(t *testing.T) {
-	defer test.New(t)
 	// a
 	// |- a1
 	// |--- a11
@@ -85,8 +85,12 @@ func TestSplitSegment(t *testing.T) {
 
 	for i, r := range ret {
 		ret, idx := SplitSegment([]rune(r.Line), r.Pos)
-		test.Equal(rs(ret), rs(r.Segments), fmt.Errorf("%v", i))
-		test.Equal(idx, r.Idx, fmt.Errorf("%v", i))
+		if !reflect.DeepEqual(rs(ret), rs(r.Segments)) {
+			t.Errorf("incorrect ret %v at %d", ret, i)
+		}
+		if idx != r.Idx {
+			t.Errorf("incorrect idx %d at %d", idx, i)
+		}
 	}
 }
 
@@ -96,8 +100,6 @@ type Tree struct {
 }
 
 func TestSegmentCompleter(t *testing.T) {
-	defer test.New(t)
-
 	tree := Tree{"", []Tree{
 		{"a", []Tree{
 			{"a1", []Tree{
@@ -170,7 +172,12 @@ func TestSegmentCompleter(t *testing.T) {
 		for _, v := range newLine {
 			lines = append(lines, v.Name)
 		}
-		test.Equal(rs(lines), rs(r.Ret), fmt.Errorf("%v", i))
-		test.Equal(length, r.Share, fmt.Errorf("%v", i))
+
+		if !reflect.DeepEqual(rs(lines), rs(r.Ret)) {
+			t.Errorf("incorrect lines %v at %d", lines, i)
+		}
+		if length != r.Share {
+			t.Errorf("incorrect length %d at %d", length, i)
+		}
 	}
 }

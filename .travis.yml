@@ -1,8 +1,7 @@
 language: go
+
 go:
-  - 1.x
-script:
-  - GOOS=windows go install github.com/mithrandie/readline-csvq/example/...
-  - GOOS=linux go install github.com/mithrandie/readline-csvq/example/...
-  - GOOS=darwin go install github.com/mithrandie/readline-csvq/example/...
-  - go test -race -v
+  - 1.11.x
+  - 1.12.x
+  - 1.13.x
+
