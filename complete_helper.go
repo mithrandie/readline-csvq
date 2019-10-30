@@ -270,13 +270,16 @@ func IsUniqueToken(r rune) bool {
 	return false
 }
 
-var EncloseMark = map[rune]rune{
-	'\'': '\'',
-	'"':  '"',
-	'`':  '`',
-	'(':  ')',
-	'[':  ']',
-	'{':  '}',
+var RightBracket = map[rune]rune{
+	'(': ')',
+	'[': ']',
+	'{': '}',
+}
+
+var LeftBracket = map[rune]rune{
+	')': '(',
+	']': '[',
+	'}': '{',
 }
 
 func IsQuotationMark(r rune) bool {
@@ -287,39 +290,64 @@ func IsBracket(r rune) bool {
 	return r == '(' || r == '[' || r == '{'
 }
 
-func LiteralIsEnclosed(mark rune, line []rune) bool {
+func IsRightBracket(r rune) bool {
+	return r == ')' || r == ']' || r == '}'
+}
+
+func LiteralIsEnclosed(enclosure rune, line []rune) bool {
 	var enclosed = true
 	for i := 0; i < len(line); i++ {
 		if !enclosed {
 			switch line[i] {
 			case '\\':
-				if i+1 < len(line) && line[i+1] == EncloseMark[mark] {
+				if i+1 < len(line) && line[i+1] == enclosure {
 					i++
 				}
-			case EncloseMark[mark]:
+			case enclosure:
 				enclosed = true
 			}
 			continue
 		}
 
-		if line[i] == mark {
+		if line[i] == enclosure {
 			enclosed = false
 		}
 	}
 	return enclosed
 }
 
-func BracketIsEnclosed(mark rune, line []rune) bool {
+func BracketIsEnclosed(leftBracket rune, line []rune) bool {
+	rightBracket := RightBracket[leftBracket]
+
 	var blockLevel = 0
 	for i := 0; i < len(line); i++ {
 		switch line[i] {
 		case '\\':
-			if i+1 < len(line) && line[i+1] == EncloseMark[mark] {
+			if i+1 < len(line) && line[i+1] == rightBracket {
 				i++
 			}
-		case mark:
+		case leftBracket:
 			blockLevel++
-		case EncloseMark[mark]:
+		case rightBracket:
+			blockLevel--
+		}
+	}
+	return blockLevel < 1
+}
+
+func BracketIsEnclosedByRightBracket(rightBracket rune, line []rune) bool {
+	leftBracket := LeftBracket[rightBracket]
+
+	var blockLevel = 0
+	for i := 0; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			if i+1 < len(line) && line[i+1] == rightBracket {
+				i++
+			}
+		case leftBracket:
+			blockLevel++
+		case rightBracket:
 			blockLevel--
 		}
 	}
