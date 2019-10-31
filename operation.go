@@ -248,7 +248,15 @@ func (o *Operation) ioloop() {
 			if o.IsSearchMode() {
 				o.ExitSearchMode(false)
 			}
+
+			var trailingBuf []rune
+			if 0 < o.buf.Len() && 0 < o.buf.Pos() && o.buf.buf[o.buf.Pos()-1] == '\\' {
+				trailingBuf = make([]rune, o.buf.Len()-o.buf.Pos())
+				copy(trailingBuf, o.buf.buf[o.buf.Pos():])
+				o.buf.Kill()
+			}
 			o.buf.MoveToLineEnd()
+
 			var data []rune
 			if !o.GetConfig().UniqueEditLine {
 				if 0 < o.buf.Len() && o.buf.buf[len(o.buf.buf)-1] == '\\' {
@@ -265,6 +273,14 @@ func (o *Operation) ioloop() {
 				o.buf.Clean()
 				data = o.buf.Reset()
 			}
+
+			if 0 < len(trailingBuf) {
+				for _, r := range trailingBuf {
+					o.buf.WriteRune(r)
+				}
+				o.buf.MoveToLineStart()
+			}
+
 			o.outchan <- data
 			if !o.GetConfig().DisableAutoSaveHistory {
 				// ignore IO error
