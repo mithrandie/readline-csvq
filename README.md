@@ -6,4 +6,4 @@ Forked from github.com/chzyer/readline.
 
 ## Requirements
 
-Go 1.17 or later.
+Go 1.18 or later.
